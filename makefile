@@ -45,7 +45,7 @@ test_v4: bin/yc12015/step_world_v4_double_buffered \
 	# produce world binary file
 	$(MW_EXE) 100 0.1 1 > $(W_BIN)
 	# expect floating point in-accuracy
-	-cat $(W_BIN) | $(SW_EXE) 0.1 1000 0 \
-		| diff - <(cat $(W_BIN) | $< 0.1 1000 0)
+	-cat $(W_BIN) | $(SW_EXE) 0.1 10 0 \
+		| diff - <(cat $(W_BIN) | $< 0.1 10 0)
 	time -p (cat $(W_BIN) | $(SW_EXE) 0.1 1000 1 > /dev/null)
 	time -p (cat $(W_BIN) | $< 0.1 1000 1 > /dev/null)
