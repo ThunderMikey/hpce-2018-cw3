@@ -8,6 +8,7 @@ LDLIBS += -lOpenCL
 SHELL:=/bin/bash
 MW_EXE=bin/make_world
 SW_EXE=bin/step_world
+W_BIN=/tmp/world.bin
 
 all : bin/make_world bin/render_world bin/step_world
 
@@ -38,3 +39,13 @@ test_v3: bin/yc12015/step_world_v3_opencl \
 	$(MW_EXE) 10 0.1 | $(SW_EXE) 0.1 1000 \
 		| diff - <($(MW_EXE) 10 0.1 | $< 0.1 1000)
 	#$(MW_EXE) 10 0.1 | $< 0.1 1000
+
+test_v4: bin/yc12015/step_world_v4_double_buffered \
+	$(MW_EXE) $(SW_EXE)
+	# produce world binary file
+	$(MW_EXE) 100 0.1 1 > $(W_BIN)
+	# expect floating point in-accuracy
+	-cat $(W_BIN) | $(SW_EXE) 0.1 1000 0 \
+		| diff - <(cat $(W_BIN) | $< 0.1 1000 0)
+	time -p (cat $(W_BIN) | $(SW_EXE) 0.1 1000 1 > /dev/null)
+	time -p (cat $(W_BIN) | $< 0.1 1000 1 > /dev/null)
