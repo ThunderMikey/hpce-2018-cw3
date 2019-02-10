@@ -13,6 +13,8 @@ V3_EXE := bin/yc12015/step_world_v3_opencl
 V4_EXE := bin/yc12015/step_world_v4_double_buffered
 V5_EXE := bin/yc12015/step_world_v5_packed_properties
 
+time_it = time -p (cat $(W_BIN) | $(1) 0.1 500 1 > /dev/null)
+
 all : bin/make_world bin/render_world bin/step_world
 
 bin/% : src/%.cpp src/heat.cpp
@@ -41,10 +43,13 @@ test_v2: bin/yc12015/step_world_v2_function \
 
 test_v3: bin/yc12015/step_world_v3_opencl \
 	$(MW_EXE) $(SW_EXE)
+	$(MW_EXE) 10 0.1 1 > $(W_BIN)
 	# expect floating point in-accuracy
-	$(MW_EXE) 10 0.1 | $(SW_EXE) 0.1 1000 \
-		| diff - <($(MW_EXE) 10 0.1 | $< 0.1 1000)
+	-cat $(W_BIN) | $(SW_EXE) 0.1 1000 \
+		| diff - <(cat $(W_BIN) | $< 0.1 1000)
 	#$(MW_EXE) 10 0.1 | $< 0.1 1000
+	$(call time_it,$(SW_EXE))
+	$(call time_it,$<)
 
 test_v4: bin/yc12015/step_world_v4_double_buffered \
 	$(MW_EXE) $(SW_EXE)
@@ -66,7 +71,6 @@ test_v5: bin/yc12015/step_world_v5_packed_properties \
 	time -p (cat $(W_BIN) | $(SW_EXE) 0.1 1000 1 > /dev/null)
 	time -p (cat $(W_BIN) | $< 0.1 1000 1 > /dev/null)
 
-time_it = time -p (cat $(W_BIN) | $(1) 0.1 500 1 > /dev/null)
 compare_v3_v4_v5: $(V3_EXE) $(V4_EXE) $(V5_EXE) \
 	$(MW_EXE) $(SW_EXE)
 	# produce world binary file
