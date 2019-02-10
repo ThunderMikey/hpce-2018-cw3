@@ -134,7 +134,8 @@ void StepWorldV3OpenCL(world_t &world, float dt, unsigned n)
 
   // create context
   cl::Context context(devices);
-
+  //--------------------
+  // build cl program
   std::string kernelSource = LoadSource("step_world_v3_kernel.cl");
   cl::Program::Sources sources;
   sources.push_back(std::make_pair(
@@ -143,13 +144,9 @@ void StepWorldV3OpenCL(world_t &world, float dt, unsigned n)
         )
       );
 
-  std::cerr<<kernelSource.c_str()<<std::endl;
-  std::cerr<<kernelSource.size()<<std::endl;
-  std::cerr<<kernelSource.length()<<std::endl;
   cl::Program program(context, sources);
   try{
     program.build(devices);
-    std::cerr<<"Program built\n";
   }catch(...){
     for(unsigned i=0; i<no_devices; i++){
       std::cerr<<"Log for device "<<devices[i].getInfo<CL_DEVICE_NAME>()<<":\n\n";
@@ -158,24 +155,81 @@ void StepWorldV3OpenCL(world_t &world, float dt, unsigned n)
     throw;
   }
 
+  // ----------------
+  // allocate buffers
+  size_t cbBuffer = 4*world.w*world.h;
+  cl::Buffer buffProperties(context, CL_MEM_READ_ONLY, cbBuffer);
+  cl::Buffer buffState(context, CL_MEM_READ_ONLY, cbBuffer);
+  cl::Buffer buffBuffer(context, CL_MEM_WRITE_ONLY, cbBuffer);
+ 
+
 	unsigned w=world.w, h=world.h;
-	
+
 	float outer=world.alpha*dt;		// We spread alpha to other cells per time
 	float inner=1-outer/4;				// Anything that doesn't spread stays
-	
+
 	// This is our temporary working space
 	std::vector<float> buffer(w*h);
 
+  // ---------------
+  // setting kernel parameters
+  cl::Kernel kernel(program, "kernel_xy");
+  kernel.setArg(0, inner);
+  kernel.setArg(1, outer);
+  kernel.setArg(2, buffProperties);
+  kernel.setArg(3, buffState);
+  kernel.setArg(4, buffBuffer);
+
+  // ---------------
+  // create command queue
+  cl::CommandQueue queue(context, device);
+
+  // -------------------
+  // copy over fixed data
+  queue.enqueueWriteBuffer(
+      buffProperties,
+      CL_TRUE, 0, cbBuffer,
+      &world.properties[0]
+      );
 	
 	for(unsigned t=0;t<n;t++){
-		for(unsigned y=0;y<h;y++){
-			for(unsigned x=0;x<w;x++){
-        kernel_xy(x, y, w,
-            outer, inner,
-            &world.state[0], (const uint32_t *)&world.properties[0],
-            &buffer[0]);
-			}  // end of for(x...
-		} // end of for(y...
+    // copy mem buffers
+    cl::Event evCopiedState;
+    queue.enqueueWriteBuffer(
+        buffState,
+        CL_FALSE,
+        0,
+        cbBuffer,
+        &world.state[0],
+        NULL,
+        &evCopiedState
+        );
+    // execute the kernel
+    cl::NDRange offset(0, 0);
+    cl::NDRange globalSize(w, h);
+    cl::NDRange localSize = cl::NullRange;
+
+    std::vector<cl::Event> kernelDependencies(1, evCopiedState);
+    cl::Event evExecutedKernel;
+    queue.enqueueNDRangeKernel(
+        kernel,
+        offset,
+        globalSize,
+        localSize,
+        &kernelDependencies,
+        &evExecutedKernel
+        );
+
+    // copy the results back
+    std::vector<cl::Event> copyBackDependencies(1, evExecutedKernel);
+    queue.enqueueReadBuffer(
+        buffBuffer,
+        CL_TRUE,
+        0,
+        cbBuffer,
+        &buffer[0],
+        &copyBackDependencies
+        );
 		
 		// All cells have now been calculated and placed in buffer, so we replace
 		// the old state with the new state
