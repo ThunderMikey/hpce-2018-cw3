@@ -34,6 +34,7 @@ test_v2: bin/yc12015/step_world_v2_function \
 
 test_v3: bin/yc12015/step_world_v3_opencl \
 	$(MW_EXE) $(SW_EXE)
-	#$(MW_EXE) 10 0.1 | $(SW_EXE) 0.1 1000 \
-	#	| diff - <($(MW_EXE) 10 0.1 | $< 0.1 1000)
-	$(MW_EXE) 10 0.1 | $< 0.1 1000
+	# expect floating point in-accuracy
+	$(MW_EXE) 10 0.1 | $(SW_EXE) 0.1 1000 \
+		| diff - <($(MW_EXE) 10 0.1 | $< 0.1 1000)
+	#$(MW_EXE) 10 0.1 | $< 0.1 1000
