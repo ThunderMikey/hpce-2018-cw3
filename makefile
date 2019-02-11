@@ -77,15 +77,11 @@ compare_v3_v4_v5: $(V3_EXE) $(V4_EXE) $(V5_EXE) \
 	# produce world binary file
 	$(MW_EXE) 256 0.1 1 > $(W_BIN)
 	@echo "==========="
-	@echo "$(SW_EXE)"
 	$(call c_time_it,$(SW_EXE))
 	@echo "==========="
-	@echo "$(V3_EXE)"
 	$(call c_time_it,$(V3_EXE))
 	@echo "==========="
-	@echo "$(V4_EXE)"
 	$(call c_time_it,$(V4_EXE))
 	@echo "==========="
-	@echo "$(V5_EXE)"
 	$(call c_time_it,$(V5_EXE))
 

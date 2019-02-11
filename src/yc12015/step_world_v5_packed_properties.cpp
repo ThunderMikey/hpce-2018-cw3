@@ -138,24 +138,13 @@ void StepWorldV4DoubleBuffered(world_t &world, float dt, unsigned n)
   cl::CommandQueue queue(context, device);
 
   // copy mem buffers
-  cl::Event evCopiedState;
   queue.enqueueWriteBuffer(
       buffState,
-      CL_FALSE,
+      CL_TRUE,
       0,
       cbBuffer,
-      &world.state[0],
-      NULL,
-      &evCopiedState
+      &world.state[0]
       );
-  // define kernel exe params
-  cl::NDRange offset(0, 0);
-  cl::NDRange globalSize(w, h);
-  cl::NDRange localSize = cl::NullRange;
-
-  // kernel no longer depends on buffState as it is changing every loop
-  std::vector<cl::Event> kernelDependencies;
-  cl::Event evExecutedKernel;
 
   // pack neighbour properties into uint
   // packed properties definition
@@ -196,12 +185,19 @@ void StepWorldV4DoubleBuffered(world_t &world, float dt, unsigned n)
   // copy over fixed data: packed properties
   queue.enqueueWriteBuffer(
       buffProperties,
-      CL_TRUE, 0, cbBuffer,
+      CL_TRUE,
+      0,
+      cbBuffer,
       &packedProps[0]
       );
+  // define kernel exe params
+  cl::NDRange offset(0, 0);
+  cl::NDRange globalSize(w, h);
+  cl::NDRange localSize = cl::NullRange;
 
-  // set barrier
-  queue.enqueueBarrierWithWaitList();
+  // kernel no longer depends on buffState as it is changing every loop
+  cl::Event evExecutedKernel;
+
 
 	for(unsigned t=0;t<n;t++){
     // set args for every loop
@@ -211,9 +207,7 @@ void StepWorldV4DoubleBuffered(world_t &world, float dt, unsigned n)
         kernel,
         offset,
         globalSize,
-        localSize,
-        &kernelDependencies,
-        &evExecutedKernel
+        localSize
         );
 
     queue.enqueueBarrierWithWaitList();
@@ -223,18 +217,14 @@ void StepWorldV4DoubleBuffered(world_t &world, float dt, unsigned n)
 		// Swapping rather than assigning is cheaper: just a pointer swap
 		// rather than a memcpy, so O(1) rather than O(w*h)
 	
-		world.t += dt; // We have moved the world forwards in time
-		
 	} // end of for(t...
   // copy the results back
-  std::vector<cl::Event> copyBackDependencies(1, evExecutedKernel);
   queue.enqueueReadBuffer(
       buffState,
       CL_TRUE,
       0,
       cbBuffer,
-      &world.state[0],
-      &copyBackDependencies
+      &world.state[0]
       );
 }
 
