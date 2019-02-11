@@ -71,20 +71,21 @@ test_v5: bin/yc12015/step_world_v5_packed_properties \
 	time -p (cat $(W_BIN) | $(SW_EXE) 0.1 1000 1 > /dev/null)
 	time -p (cat $(W_BIN) | $< 0.1 1000 1 > /dev/null)
 
+c_time_it = time -p (cat $(W_BIN) | $(1) 0.1 2048 1 > /dev/null 2>&1)
 compare_v3_v4_v5: $(V3_EXE) $(V4_EXE) $(V5_EXE) \
 	$(MW_EXE) $(SW_EXE)
 	# produce world binary file
-	$(MW_EXE) 1000 0.1 1 > $(W_BIN)
+	$(MW_EXE) 256 0.1 1 > $(W_BIN)
 	@echo "==========="
 	@echo "$(SW_EXE)"
-	$(call time_it,$(SW_EXE))
+	$(call c_time_it,$(SW_EXE))
 	@echo "==========="
 	@echo "$(V3_EXE)"
-	$(call time_it,$(V3_EXE))
+	$(call c_time_it,$(V3_EXE))
 	@echo "==========="
 	@echo "$(V4_EXE)"
-	$(call time_it,$(V4_EXE))
+	$(call c_time_it,$(V4_EXE))
 	@echo "==========="
 	@echo "$(V5_EXE)"
-	$(call time_it,$(V5_EXE))
+	$(call c_time_it,$(V5_EXE))
 
